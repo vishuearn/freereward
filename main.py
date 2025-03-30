@@ -3,7 +3,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Callback
 import logging
 import time
 
-from telegram.ext import MessageHandler, Filters
+from telegram.ext import MessageHandler, filters
 
 
 import json
@@ -359,10 +359,10 @@ def main():
     dispatcher.add_handler(CommandHandler("balance", check_balance))
     dispatcher.add_handler(CommandHandler("referrals", show_referral_details))
     dispatcher.add_handler(CommandHandler("menu", show_main_menu))  # ✅ /menu command
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    dispatcher.add_handler(MessageHandler(filters.text & ~filters.command, handle_message))
 
     # ✅ Text Message Handler (Menu Command)
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_menu_click))
+    dispatcher.add_handler(MessageHandler(filters.text & ~filters.command, handle_menu_click))
     set_bot_commands(updater)
 
     # Start the bot
