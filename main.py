@@ -6,6 +6,7 @@ import json
 import os
 
 DATA_FILE = "data.json"
+ADMIN_ID = "5018478747"  # ✅ अपना Admin ID डालें
 
 # ✅ Load and Save JSON Data
 def load_data():
@@ -19,7 +20,7 @@ def save_data(data):
         json.dump(data, f, indent=4)
 
 # ✅ Bot Token
-TOKEN = "8019280976:AAEZ_79jNbWx-yKUhE-PeeGi3IYvEk44nfA"
+TOKEN = "YOUR_BOT_TOKEN"
 
 # ✅ Telegram Channels
 CHANNELS = ["whatsappagentloot2", "visalearnings", "without_investment_earning_mone"]
@@ -56,8 +57,7 @@ async def start(update: Update, context: CallbackContext):
 
 # ✅ Send Join Message with Buttons
 async def send_join_message(update: Update):
-    keyboard = [[InlineKeyboardButton(f"Join {channel}", url=f"https://t.me/{channel}")]
-                for channel in CHANNELS]
+    keyboard = [[InlineKeyboardButton(f"Join {channel}", url=f"https://t.me/{channel}")] for channel in CHANNELS]
     keyboard.append([InlineKeyboardButton("✅ I Joined", callback_data="check_join")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -65,17 +65,6 @@ async def send_join_message(update: Update):
         "❌ You must join all channels to continue. Click 'I Joined' after joining:",
         reply_markup=reply_markup
     )
-
-# ✅ Check If User Joined the Channels
-async def check_join(update: Update, context: CallbackContext):
-    query = update.callback_query
-    user_id = query.from_user.id
-
-    if await is_user_in_all_channels(user_id, context.application):
-        await query.message.delete()
-        await show_main_menu(update)
-    else:
-        await query.answer("❌ You have not joined all channels. Please join first!", show_alert=True)
 
 # ✅ Show Main Menu
 async def show_main_menu(update: Update):
@@ -171,32 +160,47 @@ async def handle_message(update: Update, context: CallbackContext):
             save_data(data)
 
             upi_id = context.user_data.get("upi_id")
+
+            # ✅ Send Message to Admin
+            admin_msg = (
+                f"🆕 *New Withdrawal Request!*\n\n"
+                f"👤 User ID: `{user_id}`\n"
+                f"💰 Amount: ₹{amount}\n"
+                f"💳 UPI ID: `{upi_id}`"
+            )
+            await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode="Markdown")
+
             await update.message.reply_text(
                 f"✅ *Withdrawal request submitted!*\n\n"
                 f"📌 *Details:*\n"
                 f"💰 Amount: ₹{amount}\n"
                 f"💳 UPI ID: `{upi_id}`\n"
-                "⏳ Please wait while the admin processes your request.\n"
-                "💡 *You will receive your payment within 24 hours!*",
+                "⏳ Please wait while the admin processes your request.",
                 parse_mode="Markdown"
             )
         else:
-            await update.message.reply_text("❌ *You don't have enough balance to withdraw!*", parse_mode="Markdown")
+            await update.message.reply_text("❌ *You don't have enough balance to withdraw!*")
 
         context.user_data["awaiting_amount"] = False
+
+# ✅ Show Referral Stats (Admin Only)
+async def show_referral_details(update: Update, context: CallbackContext):
+    if str(update.message.chat.id) != ADMIN_ID:
+        await update.message.reply_text("❌ You are not authorized to view this data!")
+        return
+
+    data = load_data()
+    referral_data = "\n".join([f"User {user}: {len(info['referrals'])} referrals" for user, info in data.items()])
+
+    await update.message.reply_text(f"📊 *Referral Stats:*\n\n{referral_data}", parse_mode="Markdown")
 
 # ✅ Main Function
 def main():
     app = Application.builder().token(TOKEN).build()
-
-    # ✅ Handlers
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("balance", check_balance))
+    app.add_handler(CommandHandler("referrals", show_referral_details))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))
     app.add_handler(CallbackQueryHandler(handle_button_click))
-
-    # ✅ Run Bot
     app.run_polling()
 
 if __name__ == "__main__":
