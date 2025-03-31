@@ -79,7 +79,7 @@ async def check_join(update: Update, context: CallbackContext):
       
 # ✅ Show Main Menu
 # ✅ Show Main Menu (Fix for callback issue)
-async def show_main_menu(update: Update, context: CallbackContext):
+async def show_main_menu(update, context: CallbackContext):
     keyboard = [
         [InlineKeyboardButton("💰 Balance", callback_data="balance"),
          InlineKeyboardButton("👥 Refer & Earn", callback_data="refer")],
@@ -87,12 +87,14 @@ async def show_main_menu(update: Update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if isinstance(update, Update) and update.message:  # ✅ If called from /start
+    if isinstance(update, Update) and update.message:  # ✅ Called from /start
         await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
-    elif isinstance(update, CallbackQuery):  # ✅ If called from button (e.g., "I Joined")
+    elif isinstance(update, CallbackQuery):  # ✅ Called from "I Joined" button
         query = update
         await query.answer()
-        await query.message.edit_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+        await query.message.delete()  # ✅ Remove old "I Joined" message
+        await query.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+
 
 
 
@@ -211,12 +213,16 @@ async def show_referral_details(update: Update, context: CallbackContext):
 # ✅ Main Function
 def main():
     app = Application.builder().token(TOKEN).build()
+    
+    # ✅ Register Command and CallbackQuery Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("referrals", show_referral_details))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_button_click))
+    app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))  # ✅ Moved above app.run_polling()
+
     app.run_polling()
-    # ✅ Register Callback Query Handler
-    app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))
+
 if __name__ == "__main__":
     main()
+
