@@ -87,12 +87,13 @@ async def show_main_menu(update: Update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if update.message:  # ✅ Handle normal messages
+    if isinstance(update, Update) and update.message:  # ✅ If called from /start
         await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
-    elif update.callback_query:  # ✅ Handle callback queries
-        query = update.callback_query
+    elif isinstance(update, CallbackQuery):  # ✅ If called from button (e.g., "I Joined")
+        query = update
         await query.answer()
         await query.message.edit_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+
 
 
 # ✅ Handle Button Clicks
