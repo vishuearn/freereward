@@ -74,14 +74,15 @@ async def check_join(update: Update, context: CallbackContext):
 
     if await is_user_in_all_channels(user_id, context.application):
         await query.message.delete()  # ✅ पुराना मैसेज हटाएं
-        await show_main_menu(update, context)  # ✅ Main Menu दिखाएं
+        await show_main_menu(update, context, query)  # ✅ Main Menu दिखाएं
     else:
         await query.answer("❌ You have not joined all channels. Please join first!", show_alert=True)
+
 
       
 # ✅ Show Main Menu
 # ✅ Show Main Menu (Fix for callback issue)
-async def show_main_menu(update, context: CallbackContext):
+ async def show_main_menu(update: Update, context: CallbackContext, query=None):
     keyboard = [
         [InlineKeyboardButton("💰 Balance", callback_data="balance"),
          InlineKeyboardButton("👥 Refer & Earn", callback_data="refer")],
@@ -89,11 +90,11 @@ async def show_main_menu(update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if isinstance(update, Update) and update.message:  # ✅ If called from /start
-        await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
-    elif isinstance(update, CallbackQuery):  # ✅ If called from "I Joined"
-        query = update
+    if query:  # ✅ If called from callback (I Joined)
         await query.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+    else:  # ✅ If called from /start
+        await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+
 
 
 
