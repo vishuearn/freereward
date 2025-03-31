@@ -66,8 +66,20 @@ async def send_join_message(update: Update):
         reply_markup=reply_markup
     )
 
+# ✅ Check If User Joined the Channels
+async def check_join(update: Update, context: CallbackContext):
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    if await is_user_in_all_channels(user_id, context.application):
+        await query.message.delete()
+        await show_main_menu(query, context)
+    else:
+        await query.answer("❌ You have not joined all channels. Please join first!", show_alert=True)
+      
 # ✅ Show Main Menu
-async def show_main_menu(update: Update):
+# ✅ Show Main Menu (Fix for callback issue)
+async def show_main_menu(update: Update, context: CallbackContext):
     keyboard = [
         [InlineKeyboardButton("💰 Balance", callback_data="balance"),
          InlineKeyboardButton("👥 Refer & Earn", callback_data="refer")],
@@ -75,10 +87,10 @@ async def show_main_menu(update: Update):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if update.message:
+    if isinstance(update, Update):  # If coming from /start command
         await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
-    elif update.callback_query:
-        query = update.callback_query
+    elif isinstance(update, CallbackQuery):  # If coming from "I Joined" button
+        query = update
         await query.answer()
         await query.message.edit_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
 
@@ -202,6 +214,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_button_click))
     app.run_polling()
-
+    # ✅ Register Callback Query Handler
+    app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))
 if __name__ == "__main__":
     main()
