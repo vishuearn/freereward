@@ -82,7 +82,7 @@ async def check_join(update: Update, context: CallbackContext):
       
 # ✅ Show Main Menu
 # ✅ Show Main Menu (Fix for callback issue)
- async def show_main_menu(update: Update, context: CallbackContext, query=None):
+async def show_main_menu(update: Update, context: CallbackContext, query=None):
     keyboard = [
         [InlineKeyboardButton("💰 Balance", callback_data="balance"),
          InlineKeyboardButton("👥 Refer & Earn", callback_data="refer")],
@@ -94,6 +94,7 @@ async def check_join(update: Update, context: CallbackContext):
         await query.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
     else:  # ✅ If called from /start
         await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+
 
 
 
