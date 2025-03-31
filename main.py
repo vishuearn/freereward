@@ -114,6 +114,9 @@ async def handle_button_click(update: Update, context: CallbackContext):
         )
     elif query.data == "withdraw":
         await withdraw_request(update, context)
+    elif query.data == "check_join":  # ✅ "I Joined" Button Fix
+        await check_join(update, context)
+
 
 # ✅ Check Balance
 async def check_balance(update: Update, context: CallbackContext):
