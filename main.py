@@ -53,7 +53,7 @@ async def start(update: Update, context: CallbackContext):
     if not await is_user_in_all_channels(user_id, context.application):
         await send_join_message(update)
     else:
-        await show_main_menu(update)
+        await show_main_menu(update, context)
 
 # ✅ Send Join Message with Buttons
 async def send_join_message(update: Update):
@@ -87,12 +87,13 @@ async def show_main_menu(update: Update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if isinstance(update, Update):  # If coming from /start command
+    if update.message:  # ✅ Handle normal messages
         await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
-    elif isinstance(update, CallbackQuery):  # If coming from "I Joined" button
-        query = update
+    elif update.callback_query:  # ✅ Handle callback queries
+        query = update.callback_query
         await query.answer()
         await query.message.edit_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
+
 
 # ✅ Handle Button Clicks
 async def handle_button_click(update: Update, context: CallbackContext):
