@@ -43,13 +43,24 @@ async def is_user_in_all_channels(user_id, application):
     return True
 
 # ✅ Start Command
+# ✅ Start Command
 async def start(update: Update, context: CallbackContext):
     user_id = str(update.message.chat.id)
     data = load_data()
 
+    # ✅ Extract Referral ID
+    args = context.args
+    referrer_id = args[0] if args else None  
+
     if user_id not in data:
         data[user_id] = {"balance": 1, "referrals": []}
-        save_data(data)
+
+        # ✅ अगर रेफरल से आया है, तो रेफरर के डेटा में जोड़ें
+        if referrer_id and referrer_id != user_id and referrer_id in data:
+            data[referrer_id]["balance"] += 1  # ₹1 जोड़ें
+            data[referrer_id]["referrals"].append(user_id)  # Referral ID जोड़ें
+        
+        save_data(data)  # ✅ Data Save करें
 
     if not await is_user_in_all_channels(user_id, context.application):
         await send_join_message(update)
@@ -206,6 +217,7 @@ async def handle_message(update: Update, context: CallbackContext):
         context.user_data["awaiting_amount"] = False
 
 # ✅ Show Referral Stats (Admin Only)
+# ✅ Admin Command to Check Referrals
 async def show_referral_details(update: Update, context: CallbackContext):
     if str(update.message.chat.id) != ADMIN_ID:
         await update.message.reply_text("❌ You are not authorized to view this data!")
@@ -213,8 +225,12 @@ async def show_referral_details(update: Update, context: CallbackContext):
 
     data = load_data()
     referral_data = "\n".join([f"User {user}: {len(info['referrals'])} referrals" for user, info in data.items()])
+    
+    if referral_data:
+        await update.message.reply_text(f"📊 *Referral Stats:*\n\n{referral_data}", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("📊 No referrals yet!", parse_mode="Markdown")
 
-    await update.message.reply_text(f"📊 *Referral Stats:*\n\n{referral_data}", parse_mode="Markdown")
 
 # ✅ Main Function
 def main():
