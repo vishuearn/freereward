@@ -24,7 +24,7 @@ def save_data(data):
 TOKEN = "8019280976:AAEZ_79jNbWx-yKUhE-PeeGi3IYvEk44nfA"
 
 # ✅ Telegram Channels
-CHANNELS = ["whatsappagentloot2", "visalearnings", "without_investment_earning_mone"]
+CHANNELS = ["whatsappagentloot2", "visalearnings", "without_investment_earning_mone", "Nobitaearnings"]
 
 # ✅ Set Up Logging
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -224,12 +224,23 @@ async def show_referral_details(update: Update, context: CallbackContext):
         return
 
     data = load_data()
-    referral_data = "\n".join([f"User {user}: {len(info['referrals'])} referrals" for user, info in data.items()])
-    
-    if referral_data:
-        await update.message.reply_text(f"📊 *Referral Stats:*\n\n{referral_data}", parse_mode="Markdown")
-    else:
-        await update.message.reply_text("📊 No referrals yet!", parse_mode="Markdown")
+    messages = []
+    current_message = "📊 *Referral Stats:*\n\n"
+
+    for user, info in data.items():
+        if info["referrals"]:
+            line = f"👤 {user}: {len(info['referrals'])} referrals\n"
+            if len(current_message) + len(line) > 4000:  # थोड़ा buffer रखें
+                messages.append(current_message)
+                current_message = ""
+            current_message += line
+
+    messages.append(current_message)  # लास्ट वाला भी ऐड करें
+
+    for msg in messages:
+        if msg.strip():  # खाली तो नहीं
+            await update.message.reply_text(msg, parse_mode="Markdown")
+
 
 
 # ✅ Main Function
