@@ -48,24 +48,29 @@ async def start(update: Update, context: CallbackContext):
     user_id = str(update.message.chat.id)
     data = load_data()
 
-    # ✅ Extract Referral ID
+    # ✅ Extract Referral ID from link
     args = context.args
     referrer_id = args[0] if args else None  
 
+    # अगर user पहले से data में नहीं है तो नया entry बनाओ
     if user_id not in data:
         data[user_id] = {"balance": 1, "referrals": []}
 
-        # ✅ अगर रेफरल से आया है, तो रेफरर के डेटा में जोड़ें
-        if referrer_id and referrer_id != user_id and referrer_id in data:
-            data[referrer_id]["balance"] += 1  # ₹1 जोड़ें
-            data[referrer_id]["referrals"].append(user_id)  # Referral ID जोड़ें
-        
-        save_data(data)  # ✅ Data Save करें
+        # ✅ Referrer का data जोड़ो
+        if referrer_id and referrer_id != user_id:
+            if referrer_id not in data:
+                data[referrer_id] = {"balance": 1, "referrals": []}  # fallback in case referrer is new
+            data[referrer_id]["balance"] += 1
+            if user_id not in data[referrer_id]["referrals"]:
+                data[referrer_id]["referrals"].append(user_id)
+
+        save_data(data)
 
     if not await is_user_in_all_channels(user_id, context.application):
         await send_join_message(update)
     else:
         await show_main_menu(update, context)
+
 
 # ✅ Send Join Message with Buttons
 async def send_join_message(update: Update):
@@ -107,6 +112,37 @@ async def show_main_menu(update: Update, context: CallbackContext, query=None):
         await update.message.reply_text("✅ Welcome! Choose an option:", reply_markup=reply_markup)
 
 
+import csv
+from io import StringIO
+from telegram import InputFile
+
+# ✅ Export all referral data to CSV and send to admin
+async def export_referral_data(update: Update, context: CallbackContext):
+    if str(update.message.chat.id) != ADMIN_ID:
+        await update.message.reply_text("❌ You are not authorized to export data!")
+        return
+
+    data = load_data()
+    if not data:
+        await update.message.reply_text("📂 No data to export!")
+        return
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["User ID", "Balance", "Referral Count", "Referral IDs"])
+
+    for user_id, info in data.items():
+        referrals = info.get("referrals", [])
+        writer.writerow([
+            user_id,
+            info.get("balance", 0),
+            len(referrals),
+            ", ".join(referrals)
+        ])
+
+    output.seek(0)
+    csv_file = InputFile(output, filename="referral_data.csv")
+    await context.bot.send_document(chat_id=ADMIN_ID, document=csv_file, caption="📊 Referral data exported!")
 
 
 
@@ -217,29 +253,36 @@ async def handle_message(update: Update, context: CallbackContext):
         context.user_data["awaiting_amount"] = False
 
 # ✅ Show Referral Stats (Admin Only)
-# ✅ Admin Command to Check Referrals
+# ✅ Admin Command to Check Referrals (Full Stats)
 async def show_referral_details(update: Update, context: CallbackContext):
     if str(update.message.chat.id) != ADMIN_ID:
         await update.message.reply_text("❌ You are not authorized to view this data!")
         return
 
     data = load_data()
+
+    if not data:
+        await update.message.reply_text("📊 No referrals yet!", parse_mode="Markdown")
+        return
+
     messages = []
-    current_message = "📊 *Referral Stats:*\n\n"
+    current_msg = "📊 *Referral Stats:*\n\n"
 
-    for user, info in data.items():
-        if info["referrals"]:
-            line = f"👤 {user}: {len(info['referrals'])} referrals\n"
-            if len(current_message) + len(line) > 4000:  # थोड़ा buffer रखें
-                messages.append(current_message)
-                current_message = ""
-            current_message += line
+    for user_id, info in data.items():
+        count = len(info.get("referrals", []))
+        line = f"👤 User `{user_id}` → {count} referrals\n"
+        
+        if len(current_msg) + len(line) > 4000:
+            messages.append(current_msg)
+            current_msg = ""
 
-    messages.append(current_message)  # लास्ट वाला भी ऐड करें
+        current_msg += line
+
+    messages.append(current_msg)
 
     for msg in messages:
-        if msg.strip():  # खाली तो नहीं
-            await update.message.reply_text(msg, parse_mode="Markdown")
+        await update.message.reply_text(msg, parse_mode="Markdown")
+
 
 
 
@@ -250,10 +293,11 @@ def main():
     # ✅ Register Command and CallbackQuery Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("referrals", show_referral_details))
+    app.add_handler(CommandHandler("export", export_referral_data))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_button_click))
     app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))  # ✅ Moved above app.run_polling()
-
+    
     app.run_polling()
 
 if __name__ == "__main__":
